@@ -18,6 +18,7 @@
 #include "SDCard.h"
 #include "PowerUtils.h"
 #include "Button.h"
+#include "driver/sdmmc_types.h"
 
 const char *WIFI_SSID = "CMGResearch";
 const char *WIFI_PASSWORD = "02087552867";
@@ -67,8 +68,45 @@ void setup()
   }
   #endif
   #ifdef USE_SDIO
+
+    // D0 (MISO in SPI mode) is GPIO 2, 10k pullup in SD mode, pull low to go into download mode (see Note about GPIO2 below!)
+    // Internal pull-up available on DevKitC v4
+    pinMode(SD_CARD_D0, INPUT_PULLUP); // Pin 2
+    
+    // D1 is GPIO 4, 10k pullup in SD mode
+    // Internal pull-up available on DevKitC v4
+    pinMode(SD_CARD_D1, INPUT_PULLUP); // Pin 4
+
+    // D2 is GPIO 12, 10k pullup in SD mode
+    // Internal pull-up available on DevKitC v4
+    // Note: GPIO12 is used as a bootstrapping pin, so it must be low at reset, so must disconnect pull-up resistor to flash it.
+    pinMode(SD_CARD_D2, INPUT_PULLUP); // Pin 12
+
+    // D3 (CS in SPI mode) is GPIO 13, 10k pullup in SD mode
+    // Internal pull-up available on DevKitC v4
+    pinMode(SD_CARD_D3, INPUT_PULLUP); // Pin 13
+
+    // CMD (MOSI in SPI mode) is GPIO 15, 10k pullup in SD mode
+    // On DevKitC v4, this pin has a weak pull up, but it's not enabled by default.
+    pinMode(SD_CARD_CMD, INPUT_PULLUP); // Pin 15
+
+    // Didn't need to pull this up in Arduino SD_MMC example, but ESP-IDF says:
+    // CLK is GPIO 14, 10k pullup in SD mode
+    // On DevKitC v4, this pin has a weak pull up, but it's not enabled by default.
+    pinMode(SD_CARD_CLK, INPUT_PULLUP); // Pin 14
+
+    // Regarding GPIO 12:
+    // https://github.com/espressif/esp-idf/tree/master/examples/storage/sd_card/sdmmc
+    // On boards which use the internal regulator and a 3.3V flash chip, GPIO12 must be low at reset. This is incompatible with SD card operation.
+    // In most cases, external pullup can be omitted and an internal pullup can be enabled using a gpio_pullup_en(GPIO_NUM_12); call. Most SD cards work fine when an internal pullup on GPIO12 line is enabled. Note that if ESP32 experiences a power-on reset while the SD card is sending data, high level on GPIO12 can be latched into the bootstrapping register, and ESP32 will enter a boot loop until external reset with correct GPIO12 level is applied.
+    // Another option is to burn the flash voltage selection efuses. This will permanently select 3.3V output voltage for the internal regulator, and GPIO12 will not be used as a bootstrapping pin. Then it is safe to connect a pullup resistor to GPIO12. This option is suggested for production use.
+
   SDCard *card = new SDCard(SD_CARD_CLK, SD_CARD_CMD, SD_CARD_D0, SD_CARD_D1, SD_CARD_D2, SD_CARD_D3);
   #else
+  pinMode(SD_CARD_CS, INPUT_PULLUP);
+  pinMode(SD_CARD_MISO, INPUT_PULLUP);
+  pinMode(SD_CARD_MOSI, INPUT_PULLUP);
+  pinMode(SD_CARD_CLK, INPUT_PULLUP);
   SDCard *card = new SDCard(SD_CARD_MISO, SD_CARD_MOSI, SD_CARD_CLK, SD_CARD_CS);
   #endif
   channelData = new SDCardChannelData(card, "/");

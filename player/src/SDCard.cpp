@@ -19,8 +19,12 @@
 SDCard::SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0, gpio_num_t d1, gpio_num_t d2, gpio_num_t d3)
 {
   #ifdef USE_SDIO
-  m_host.max_freq_khz = SDMMC_FREQ_52M;
-  m_host.flags = SDMMC_HOST_FLAG_4BIT;
+  m_host.max_freq_khz = SDMMC_FREQ_DEFAULT; // note: modded in the library to 5000
+  // can try using 5000 like https://github.com/espressif/esp-idf/issues/2478
+  // original code had this value: SDMMC_FREQ_52M;
+
+  m_host.flags = SDMMC_HOST_FLAG_1BIT; //SDMMC_HOST_FLAG_1BIT;
+
   esp_err_t ret;
   // Options for mounting the filesystem.
   // If format_if_mount_failed is set to true, SD card will be partitioned and
@@ -33,18 +37,18 @@ SDCard::SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0, gpio_num_t d1, gpi
   Serial.println("Initializing SD card");
 
   sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
-  slot_config.flags = SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
-  slot_config.width = 4;
-  slot_config.clk = clk;
-  slot_config.cmd = cmd;
-  slot_config.d0 = d0;
-  slot_config.d1 = d1;
-  slot_config.d2 = d2;
-  slot_config.d3 = d3;
-  slot_config.d4 = GPIO_NUM_NC;
-  slot_config.d5 = GPIO_NUM_NC;
-  slot_config.d6 = GPIO_NUM_NC;
-  slot_config.d7 = GPIO_NUM_NC;
+  slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
+  slot_config.width = 1; //4; // 4 uses clk, cmd, d0, d1, d2, d3; 1 uses clk, cmd (mosi), d0 (cs)
+  //slot_config.clk = clk;
+  //slot_config.cmd = cmd;
+  //slot_config.d0 = d0;
+  //slot_config.d1 = d1;
+  //slot_config.d2 = d2;
+  //slot_config.d3 = d3;
+  // slot_config.d4 = GPIO_NUM_NC;
+  // slot_config.d5 = GPIO_NUM_NC;
+  // slot_config.d6 = GPIO_NUM_NC;
+  // slot_config.d7 = GPIO_NUM_NC;
   ret = esp_vfs_fat_sdmmc_mount(MOUNT_POINT, &m_host, &slot_config, &mount_config, &m_card);
   if (ret != ESP_OK)
   {
@@ -69,7 +73,7 @@ SDCard::SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0, gpio_num_t d1, gpi
 
 SDCard::SDCard(gpio_num_t miso, gpio_num_t mosi, gpio_num_t clk, gpio_num_t cs)
 {
-  m_host.max_freq_khz = SDMMC_FREQ_52M;
+  m_host.max_freq_khz = SDMMC_FREQ_DEFAULT; //SDMMC_FREQ_52M;
   esp_err_t ret;
   // Options for mounting the filesystem.
   // If format_if_mount_failed is set to true, SD card will be partitioned and
@@ -87,11 +91,11 @@ SDCard::SDCard(gpio_num_t miso, gpio_num_t mosi, gpio_num_t clk, gpio_num_t cs)
       .sclk_io_num = clk,
       .quadwp_io_num = -1,
       .quadhd_io_num = -1,
-      .max_transfer_sz = 16384,
-      .flags = 0,
-      .intr_flags = 0
+      .max_transfer_sz = 4000//, //16384,
+      //.flags = 0,
+      //.intr_flags = 0
   };
-  ret = spi_bus_initialize(spi_host_device_t(m_host.slot), &bus_cfg, SPI_DMA_CHAN);
+  ret = spi_bus_initialize(spi_host_device_t(m_host.slot), &bus_cfg, SDSPI_DEFAULT_DMA); // SPI_DMA_CHAN);
   if (ret != ESP_OK)
   {
     Serial.println("Failed to initialize bus.");
