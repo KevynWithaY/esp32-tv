@@ -7,6 +7,7 @@
 
 SDCardAudioSource::SDCardAudioSource(SDCardChannelData *channelData): mChannelData(channelData)
 {
+  Serial.printf("(SDCardAudioSource) - channel %d\n" + channelData->getChannelNumber());
 }
 
 int SDCardAudioSource::getAudioSamples(int8_t **buffer, size_t &bufferSize, int currentAudioSample)

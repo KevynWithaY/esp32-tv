@@ -69,10 +69,26 @@ void setup()
   #endif
   #ifdef USE_SDIO
 
+    // 1-bit mode uses CLK, CMD, D0 while 4-bit mode uses CLK, CMD, D0, D1, D2, D3
+
+    // Didn't need to pull this up in Arduino SD_MMC example, but ESP-IDF says:
+    // CLK is GPIO 14, 10k pullup in SD mode
+    // On DevKitC v4, this pin has a weak pull up, but it's not enabled by default.
+    //pinMode(SD_CARD_CLK, INPUT_PULLUP); // Pin 14, CLK is CLK in SPI mode
+
+    // CMD (MOSI in SPI mode) is GPIO 15, 10k pullup in SD mode
+    // On DevKitC v4, this pin has a weak pull up, but it's not enabled by default.
+    pinMode(SD_CARD_CMD, INPUT_PULLUP); // Pin 15, CMD is MOSI in SPI mode
+
     // D0 (MISO in SPI mode) is GPIO 2, 10k pullup in SD mode, pull low to go into download mode (see Note about GPIO2 below!)
     // Internal pull-up available on DevKitC v4
-    pinMode(SD_CARD_D0, INPUT_PULLUP); // Pin 2
+    pinMode(SD_CARD_D0, INPUT_PULLUP); // Pin 2, D0 is MISO in SPI mode
+
+    // D3 (CS in SPI mode) is GPIO 13, 10k pullup in SD mode
+    // Internal pull-up available on DevKitC v4
+    pinMode(SD_CARD_D3, INPUT_PULLUP); // Pin 13, D3 is CS in SPI mode
     
+  #ifdef USE_4BIT_MODE
     // D1 is GPIO 4, 10k pullup in SD mode
     // Internal pull-up available on DevKitC v4
     pinMode(SD_CARD_D1, INPUT_PULLUP); // Pin 4
@@ -85,15 +101,10 @@ void setup()
     // D3 (CS in SPI mode) is GPIO 13, 10k pullup in SD mode
     // Internal pull-up available on DevKitC v4
     pinMode(SD_CARD_D3, INPUT_PULLUP); // Pin 13
+  #endif
+    
 
-    // CMD (MOSI in SPI mode) is GPIO 15, 10k pullup in SD mode
-    // On DevKitC v4, this pin has a weak pull up, but it's not enabled by default.
-    pinMode(SD_CARD_CMD, INPUT_PULLUP); // Pin 15
 
-    // Didn't need to pull this up in Arduino SD_MMC example, but ESP-IDF says:
-    // CLK is GPIO 14, 10k pullup in SD mode
-    // On DevKitC v4, this pin has a weak pull up, but it's not enabled by default.
-    pinMode(SD_CARD_CLK, INPUT_PULLUP); // Pin 14
 
     // Regarding GPIO 12:
     // https://github.com/espressif/esp-idf/tree/master/examples/storage/sd_card/sdmmc
@@ -202,23 +213,49 @@ void volumeDown() {
 }
 
 void channelDown() {
-  videoPlayer->playStatic();
-  delay(500);
-  channel--;
-  if (channel < 0) {
-    channel = channelData->getChannelCount() - 1;
+
+  // my attempt:
+  int newChannel = channel - 1;
+  if (newChannel < 0) {
+    newChannel = channelData->getChannelCount() - 1;
   }
+  videoPlayer->stop();
+  display.drawTuningText();
+  delay(500);
+  channel = newChannel;
   videoPlayer->setChannel(channel);
   videoPlayer->play();
+
+
+  // original:
+  // videoPlayer->playStatic();
+  // delay(500);
+  // channel--;
+  // if (channel < 0) {
+  //   channel = channelData->getChannelCount() - 1;
+  // }
+  // videoPlayer->setChannel(channel);
+  // videoPlayer->play();
   Serial.printf("CHANNEL_DOWN %d\n", channel);
 }
 
 void channelUp() {
-  videoPlayer->playStatic();
+
+  // my attempt:
+  int newChannel = (channel + 1) % channelData->getChannelCount();
+  videoPlayer->stop();
+  display.drawTuningText();
   delay(500);
-  channel = (channel + 1) % channelData->getChannelCount();
+  channel = newChannel;
   videoPlayer->setChannel(channel);
   videoPlayer->play();
+
+  // original:  
+  // videoPlayer->playStatic();  
+  // delay(500);
+  // channel = (channel + 1) % channelData->getChannelCount();
+  // videoPlayer->setChannel(channel);
+  // videoPlayer->play();
   Serial.printf("CHANNEL_UP %d\n", channel);
 }
 
@@ -265,25 +302,31 @@ void loop()
     remoteInput->getLatestCommand();
   }
 #endif
+
 #ifdef HAS_BUTTONS
   if (buttonLeft()) {
+    Serial.println("LEFT");
     channelDown();
   }
   if (buttonRight()) {
+    Serial.println("RIGHT");
     channelUp();
   }
   if (buttonUp()) {
+    //Serial.println("UP");
     volumeUp();
   }
   if (buttonDown()) {
+    //Serial.println("DOWN");
     volumeDown();
   }
-  if (buttonPowerOff()) {
-    Serial.println("POWER OFF");
-    delay(500);
-    powerDeepSeep();
-  }
+  // if (buttonPowerOff()) {
+  //   Serial.println("POWER OFF");
+  //   delay(500);
+  //   powerDeepSeep();
+  // }
   buttonLoop();
+  delay(200);
 #else
     // important this needs to stay otherwise we are constantly polling the IR Remote
     // and there's no time for anything else to run.

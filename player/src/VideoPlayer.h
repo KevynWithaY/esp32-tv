@@ -50,4 +50,5 @@ class VideoPlayer {
     void stop();
     void pause();
     void playStatic();
+    VideoPlayerState getState();
 };

@@ -23,9 +23,7 @@ SDCard::SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0, gpio_num_t d1, gpi
   // can try using 5000 like https://github.com/espressif/esp-idf/issues/2478
   // original code had this value: SDMMC_FREQ_52M;
 
-  m_host.flags = SDMMC_HOST_FLAG_1BIT; //SDMMC_HOST_FLAG_1BIT;
-
-  esp_err_t ret;
+   esp_err_t ret;
   // Options for mounting the filesystem.
   // If format_if_mount_failed is set to true, SD card will be partitioned and
   // formatted in case when mounting fails.
@@ -34,11 +32,19 @@ SDCard::SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0, gpio_num_t d1, gpi
       .max_files = 5,
       .allocation_unit_size = 16 * 1024};
 
-  Serial.println("Initializing SD card");
+  Serial.println("SDCard: Initializing SD card");
 
   sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
   slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
-  slot_config.width = 1; //4; // 4 uses clk, cmd, d0, d1, d2, d3; 1 uses clk, cmd (mosi), d0 (cs)
+
+#ifdef USE_4BIT_MODE
+  m_host.flags = SDMMC_HOST_FLAG_4BIT;
+  slot_config.width = 4;
+#else
+  m_host.flags = SDMMC_HOST_FLAG_1BIT;
+  slot_config.width = 1;
+#endif
+
   //slot_config.clk = clk;
   //slot_config.cmd = cmd;
   //slot_config.d0 = d0;
@@ -54,18 +60,18 @@ SDCard::SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0, gpio_num_t d1, gpi
   {
     if (ret == ESP_FAIL)
     {
-      Serial.println("Failed to mount filesystem. "
+      Serial.println("SDCard: Failed to mount filesystem. "
                     "If you want the card to be formatted, set the EXAMPLE_FORMAT_IF_MOUNT_FAILED menuconfig option.");
     }
     else
     {
-      Serial.printf("Failed to initialize the card (%s). "
+      Serial.printf("SDCard: Failed to initialize the card (%s). "
                     "Make sure SD card lines have pull-up resistors in place.\n",
                esp_err_to_name(ret));
     }
     return;
   }
-  Serial.printf("SDCard mounted at: %s\n", MOUNT_POINT);
+  Serial.printf("SDCard: SDCard mounted at: %s\n", MOUNT_POINT);
   // Card has been initialized, print its properties
   sdmmc_card_print_info(stdout, m_card);
   #endif
@@ -147,13 +153,13 @@ std::vector<std::string> SDCard::listFiles(const char *folder, const char *exten
   std::vector<std::string> files;
   char full_path[100];
   sprintf(full_path, "/sdcard%s", folder);
-  Serial.printf("Listing directory: %s\n", full_path);
+  Serial.printf("SDCard: Listing directory: %s\n", full_path);
 
   // open the directory
   DIR *dir = opendir(full_path);
   if (!dir)
   {
-    Serial.println("Failed to open directory");
+    Serial.println("SDCard: Failed to open directory");
     return files;
   }
   // list all the files in the directory that end with the extension
@@ -165,6 +171,7 @@ std::vector<std::string> SDCard::listFiles(const char *folder, const char *exten
     bool isVisible = filename[0] != '.';
     bool isMatchingExtension = extension == NULL || filename.find(extension) == filename.length() - strlen(extension);
     if (isFile && isVisible && isMatchingExtension) {
+      Serial.printf("SDCard: Found file: %s\n", filename.c_str());
             files.push_back("/sdcard/" + filename);
     }
   }

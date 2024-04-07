@@ -10,6 +10,7 @@ SDCardChannelData::SDCardChannelData(SDCard *sdCard, const char *aviPath): mSDCa
 }
 
 bool SDCardChannelData::fetchChannelData() {
+  Serial.printf("SDCardChannelData::fetchChannelData for path %s\n", mAviPath);
   // check the the sd card is mounted
   if (!mSDCard->isMounted()) {
     Serial.println("SD card is not mounted");
@@ -26,6 +27,8 @@ bool SDCardChannelData::fetchChannelData() {
 
 
 void SDCardChannelData::setChannel(int channel) {
+  Serial.printf("SDCardChannelData::setChannel to %d\n", channel);
+  
   if (!mSDCard->isMounted()) {
     Serial.println("SD card is not mounted");
     return;

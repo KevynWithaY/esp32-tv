@@ -22,12 +22,15 @@ void readChunk(FILE *file, ChunkHeader *header)
 
 AVIParser::AVIParser(std::string fname, AVIChunkType requiredChunkType): mFileName(fname), mRequiredChunkType(requiredChunkType)
 {
+  Serial.printf("%s AVIParser Constructor, file %s\n", (requiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"), fname.c_str());
 }
 
 AVIParser::~AVIParser()
 {
+  Serial.printf("%s AVIParser Deconstructor\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
   if (mFile)
   {
+    Serial.printf("%s AVIParser~ closing file %s\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"), mFileName.c_str());
     fclose(mFile);
   }
 }
@@ -37,14 +40,14 @@ bool AVIParser::isMoviListChunk(unsigned int chunkSize)
   char listType[4];
   fread(&listType, 4, 1, mFile);
   chunkSize -= 4;
-  Serial.printf("LIST type %c%c%c%c\n",
-                listType[0], listType[1],
-                listType[2], listType[3]);
+  // Serial.printf("LIST type %c%c%c%c\n",
+  //               listType[0], listType[1],
+  //               listType[2], listType[3]);
   // check for the movi list - contains the video frames and audio data
   if (strncmp(listType, "movi", 4) == 0)
   {
-    Serial.printf("Found movi list.\n");
-    Serial.printf("List Chunk Length: %d\n", chunkSize);
+    // Serial.printf("Found movi list.\n");
+    // Serial.printf("List Chunk Length: %d\n", chunkSize);
     mMoviListPosition = ftell(mFile);
     mMoviListLength = chunkSize;
     return true;
@@ -59,10 +62,13 @@ bool AVIParser::isMoviListChunk(unsigned int chunkSize)
 
 bool AVIParser::open()
 {
+  Serial.printf("%s AVIParser open %s\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"), mFileName.c_str());
+
   mFile = fopen(mFileName.c_str(), "rb");
   if (!mFile)
   {
-    Serial.printf("Failed to open file.\n");
+    Serial.printf("%s AVIParser failed to open file.\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
+    //Serial.printf("Failed to open file.\n");
     return false;
   }
   // check the file is valid
@@ -71,29 +77,32 @@ bool AVIParser::open()
   readChunk(mFile, &header);
   if (strncmp(header.chunkId, "RIFF", 4) != 0)
   {
-    Serial.println("Not a valid AVI file.");
+    Serial.printf("%s AVIParser: Not a valid AVI file.\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
+    //Serial.println("Not a valid AVI file.");
     fclose(mFile);
     mFile = NULL;
     return false;
   }
   else
   {
-    Serial.printf("RIFF header found.\n");
+    Serial.printf("%s AVIParser: RIFF header found.\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
+    //Serial.printf("RIFF header found.\n");
   }
   // next four bytes are the RIFF type which should be 'AVI '
   char riffType[4];
   fread(&riffType, 4, 1, mFile);
   if (strncmp(riffType, "AVI ", 4) != 0)
   {
-    Serial.println("Not a valid AVI file.");
+    Serial.printf("%s AVIParser: Not a valid AVI file.\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
+    //Serial.println("Not a valid AVI file.");
     fclose(mFile);
     mFile = NULL;
     return false;
   }
-  else
-  {
-    Serial.println("RIFF Type is AVI.");
-  }
+  // else
+  // {
+  //   Serial.println("RIFF Type is AVI.");
+  // }
 
   // now read each chunk and find the movi list
   while (!feof(mFile) && !ferror(mFile))
@@ -120,7 +129,7 @@ bool AVIParser::open()
   // did we find the list?
   if (mMoviListPosition == 0)
   {
-    Serial.printf("Failed to find the movi list.\n");
+    //Serial.printf("Failed to find the movi list.\n");
     fclose(mFile);
     mFile = NULL;
     return false;
@@ -134,12 +143,14 @@ size_t AVIParser::getNextChunk(uint8_t **buffer, size_t &bufferLength)
   // check if the file is open
   if (!mFile)
   {
-    Serial.println("No file open.");
+    Serial.printf("%s AVIParser: No file open.\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
+    //Serial.println("No file open.");
     return 0;
   }
   // did we find the movi list?
   if (mMoviListPosition == 0) {
-    Serial.println("No movi list found.");
+    Serial.printf("%s AVIParser: No movi list found.\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
+    //Serial.println("No movi list found.");
     return 0;
   }
   // get the next chunk of data from the list
@@ -184,6 +195,7 @@ size_t AVIParser::getNextChunk(uint8_t **buffer, size_t &bufferLength)
     }
   }
   // no more chunks
-  Serial.println("No more data");
+  Serial.printf("%s AVIParser: No more data.\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
+  //Serial.println("No more data");
   return 0;
 }

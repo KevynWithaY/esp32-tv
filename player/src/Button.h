@@ -54,8 +54,10 @@ bool buttonPowerOff() {
 void buttonInit(){
 #ifdef BUTTON_L
   #ifdef BUTTON_R
+  _btn_left = 1;
+  _btn_right = 1;
   pinMode(BUTTON_L, INPUT_PULLUP);
-  pinMode(BUTTON_R, INPUT);
+  pinMode(BUTTON_R, INPUT_PULLUP);
   #endif
 #endif
 #ifdef M5CORE2
@@ -65,16 +67,17 @@ void buttonInit(){
 
 void buttonLoop(){
   static uint_fast64_t buttonTimeStamp = 0;
-  if (millis() - buttonTimeStamp > 20) {
+  if (millis() - buttonTimeStamp > 50) {
     buttonTimeStamp = millis();
     #ifdef M5CORE2
     pos = Touch.getPressPoint();
     // Serial.printf("(%i,%i)",pos.x,pos.y);
     #endif
     #ifdef BUTTON_L
+      //_btn_left = digitalRead(BUTTON_L);
       #ifdef BUTTON_R
-    _btn_right = digitalRead(BUTTON_R);
-    _btn_left = digitalRead(BUTTON_L);
+      _btn_right = digitalRead(BUTTON_R);
+      _btn_left = digitalRead(BUTTON_L);
       #endif
     #endif
   }

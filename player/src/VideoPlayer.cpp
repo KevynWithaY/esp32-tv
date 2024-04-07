@@ -9,6 +9,18 @@
 #include "Displays/Display.h"
 #include <list>
 
+#ifdef FRAME_PLAYER_CORE
+#define FRAME_CORE FRAME_PLAYER_CORE
+#else
+#define FRAME_CORE 1
+#endif
+
+#ifdef AUDIO_PLAYER_CORE
+#define AUDIO_CORE AUDIO_PLAYER_CORE
+#else
+#define AUDIO_CORE 1
+#endif
+
 void VideoPlayer::_framePlayerTask(void *param)
 {
   VideoPlayer *player = (VideoPlayer *)param;
@@ -30,16 +42,14 @@ void VideoPlayer::start()
 {
   mVideoSource->start();
   mAudioSource->start();
+
+
+
   // launch the frame player task
-  xTaskCreatePinnedToCore(
-      _framePlayerTask,
-      "Frame Player",
-      10000,
-      this,
-      1,
-      NULL,
-      1);
-  xTaskCreatePinnedToCore(_audioPlayerTask, "audio_loop", 10000, this, 1, NULL, 1);
+  xTaskCreatePinnedToCore(_framePlayerTask, "Frame Player", 10000, this, 1, NULL, FRAME_CORE);
+
+  // launch the audio player task
+  xTaskCreatePinnedToCore(_audioPlayerTask, "audio_loop", 10000, this, 1, NULL, AUDIO_CORE);
 }
 
 void VideoPlayer::setChannel(int channel)
@@ -118,6 +128,11 @@ unsigned short xorshift16()
   return w & 0xFFFF;
 }
 
+VideoPlayerState VideoPlayer::getState()
+{
+  return mState;
+}
+
 void VideoPlayer::framePlayerTask()
 {
   uint16_t *staticBuffer = NULL;
@@ -186,9 +201,11 @@ void VideoPlayer::framePlayerTask()
     if (millis() - mChannelVisible < 2000) {
       mDisplay.drawChannel(mChannelData->getChannelNumber());
     }
-    #if CORE_DEBUG_LEVEL > 0
+    //#if CORE_DEBUG_LEVEL > 0
+    #ifdef SHOW_FPS
     mDisplay.drawFPS(frameTimes.size() / 5);
     #endif
+    //#endif
     mDisplay.endWrite();
   }
 }
