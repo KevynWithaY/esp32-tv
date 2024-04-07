@@ -36,6 +36,9 @@ void TFT::drawPixels(int x, int y, int width, int height, uint16_t *pixels) {
     dmaBuffer[dmaBufferIndex] = (uint16_t *)malloc(numPixels * 2);
   }
   memcpy(dmaBuffer[dmaBufferIndex], pixels, numPixels * 2);
+
+  // kpm note: this is where minitv's decodetask's queueDrawMcu would send the jpeg buffer to the queue, and then the drawtask
+  // would receive it and call it's draw function drawMcu
   #ifdef USE_DMA
   tft->dmaWait();
   #endif
