@@ -23,4 +23,8 @@ public:
   std::string getFrameURL();
   std::string getAudioURL();
   void setChannel(int channel);
+  int getFileFPS() {
+    // not implemented
+    return 0;
+  }
 };

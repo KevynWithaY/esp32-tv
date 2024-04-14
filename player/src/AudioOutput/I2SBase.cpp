@@ -6,6 +6,13 @@
 
 static const char *TAG = "AUDIO";
 
+//#ifdef GAIN_FACTOR
+//  #define SOFTWARE_GAIN GAIN_FACTOR
+//#else
+//  #define SOFTWARE_GAIN 1
+//#endif
+int SOFTWARE_GAIN = 1;
+
 // number of frames to try and send at once (a frame is a left and right sample)
 const size_t NUM_FRAMES_TO_SEND=1024;
 
@@ -30,7 +37,7 @@ void I2SBase::write(int8_t *samples, int count)
     for (int i = 0; i < NUM_FRAMES_TO_SEND && sample_index < count; i++)
     {
       // shift up to 16 bit samples
-      int sample = process_sample((samples[sample_index] * mVolume / 10) << 8);
+      int sample = process_sample((samples[sample_index] * ((mVolume*SOFTWARE_GAIN) / 10)) << 8);
       m_tmp_frames[i * 2] = sample;
       m_tmp_frames[i * 2 + 1] = sample;
       samples_to_send++;

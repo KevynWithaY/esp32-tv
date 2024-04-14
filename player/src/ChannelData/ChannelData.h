@@ -8,5 +8,6 @@ public:
   virtual int getChannelCount() = 0;
   virtual bool fetchChannelData() = 0;
   virtual void setChannel(int channel) = 0;
+  virtual int getFileFPS() = 0;
   int getChannelNumber() { return mChannelNumber; }
 };

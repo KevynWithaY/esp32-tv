@@ -1,7 +1,7 @@
 #include "RemoteInput.h"
 #include <IRremote.hpp>
 
-RemoteInput::RemoteInput(gpio_num_t input_pin, gpio_num_t pwr_pin, gpio_num_t gnd_pin, gpio_num_t led_pin) : m_input_pin(input_pin), m_pwr_pin(pwr_pin), m_gnd_pin(gnd_pin), m_led_pin(led_pin)
+RemoteInput::RemoteInput(int input_pin, int pwr_pin, int gnd_pin, int led_pin) : m_input_pin(input_pin), m_pwr_pin(pwr_pin), m_gnd_pin(gnd_pin), m_led_pin(led_pin)
 {
 }
 
@@ -19,7 +19,7 @@ void RemoteInput::start()
     digitalWrite(m_pwr_pin, HIGH);
   }
   // add a pullup to the input pin - TODO - is this needed?
-  pinMode(m_input_pin, INPUT_PULLUP);
+  //pinMode(m_input_pin, INPUT_PULLUP);
   // start the receiver
   IrReceiver.begin(m_input_pin, m_led_pin != -1, m_led_pin);
 }
@@ -39,6 +39,7 @@ RemoteCommands RemoteInput::getLatestCommand()
 {
   if (IrReceiver.decode())
   {
+    IrReceiver.printIRResultShort(&Serial);
     RemoteCommands command = static_cast<RemoteCommands>(IrReceiver.decodedIRData.command);
     IrReceiver.resume();
     // is it one of our recognized commands?

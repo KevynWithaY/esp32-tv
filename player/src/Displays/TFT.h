@@ -19,6 +19,7 @@ public:
   void fillScreen(uint16_t color);
   void drawChannel(int channelIndex);
   void drawTuningText();
+  void drawVolumeText(int volume);
   void drawFPS(int fps);
 };
 #endif

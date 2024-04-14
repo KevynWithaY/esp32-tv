@@ -16,10 +16,12 @@
 #define SPI_DMA_CHAN SPI_DMA_CH_AUTO
 #define MOUNT_POINT "/sdcard"
 
-SDCard::SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0, gpio_num_t d1, gpio_num_t d2, gpio_num_t d3)
+SDCard::SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0) //, gpio_num_t d1, gpio_num_t d2, gpio_num_t d3)
 {
   #ifdef USE_SDIO
-  m_host.max_freq_khz = SDMMC_FREQ_DEFAULT; // note: modded in the library to 5000
+  m_host.flags = SDMMC_HOST_FLAG_1BIT;
+  m_host.slot = SDMMC_HOST_SLOT_1;
+  m_host.max_freq_khz = SDMMC_FREQ_HIGHSPEED; //SDMMC_FREQ_DEFAULT; // note: modded in the library to 5000
   // can try using 5000 like https://github.com/espressif/esp-idf/issues/2478
   // original code had this value: SDMMC_FREQ_52M;
 
@@ -37,13 +39,13 @@ SDCard::SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0, gpio_num_t d1, gpi
   sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
   slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
 
-#ifdef USE_4BIT_MODE
-  m_host.flags = SDMMC_HOST_FLAG_4BIT;
-  slot_config.width = 4;
-#else
+//#ifdef USE_4BIT_MODE
+//  m_host.flags = SDMMC_HOST_FLAG_4BIT;
+//  slot_config.width = 4;
+//#else
   m_host.flags = SDMMC_HOST_FLAG_1BIT;
   slot_config.width = 1;
-#endif
+//#endif
 
   //slot_config.clk = clk;
   //slot_config.cmd = cmd;
@@ -72,8 +74,8 @@ SDCard::SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0, gpio_num_t d1, gpi
     return;
   }
   Serial.printf("SDCard: SDCard mounted at: %s\n", MOUNT_POINT);
-  // Card has been initialized, print its properties
-  sdmmc_card_print_info(stdout, m_card);
+
+
   #endif
 }
 

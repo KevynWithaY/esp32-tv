@@ -19,7 +19,7 @@ private:
   #endif
 public:
   SDCard(gpio_num_t miso, gpio_num_t mosi, gpio_num_t clk, gpio_num_t cs);
-  SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0, gpio_num_t d1, gpio_num_t d2, gpio_num_t d3);
+  SDCard(gpio_num_t clk, gpio_num_t cmd, gpio_num_t d0); //, gpio_num_t d1, gpio_num_t d2, gpio_num_t d3);
   ~SDCard();
   bool isMounted();
   std::vector<std::string> listFiles(const char *folder, const char *extension=NULL);

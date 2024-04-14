@@ -99,7 +99,7 @@ void PDMTimerOutput::write(int8_t *samples, int count)
         memcpy(mSecondBuffer, samples, count);
         // second buffer is now full of samples
         mSecondBufferLength = count;
-        // unlock the mutext and return
+        // unlock the mutex and return
         xSemaphoreGive(mBufferSemaphore);
         return;
       }

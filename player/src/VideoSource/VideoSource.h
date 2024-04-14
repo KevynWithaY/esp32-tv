@@ -34,4 +34,5 @@ class VideoSource {
       }
     }
     virtual void setChannel(int channel)=0;
+    virtual void setFPS(int fps)=0;
 };

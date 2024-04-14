@@ -4,11 +4,14 @@
 #include "../AVIParser/AVIParser.h"
 #include "../ChannelData/SDCardChannelData.h"
 
-#ifdef FRAMES_PER_SECOND
-#define DEFAULT_FPS FRAMES_PER_SECOND
-#else
-#define DEFAULT_FPS 15
-#endif
+
+
+//#ifdef FRAMES_PER_SECOND
+//#define DEFAULT_FPS FRAMES_PER_SECOND
+//FPS = FRAMES_PER_SECOND;
+//#else
+//#define DEFAULT_FPS 15
+//#endif
 
 SDCardVideoSource::SDCardVideoSource(SDCardChannelData *mChannelData) : mChannelData(mChannelData)
 {
@@ -17,6 +20,25 @@ SDCardVideoSource::SDCardVideoSource(SDCardChannelData *mChannelData) : mChannel
 void SDCardVideoSource::start()
 {
   // nothing to do!
+  #ifdef FRAMES_PER_SECOND
+  FPS = FRAMES_PER_SECOND;
+  #endif
+}
+
+void SDCardVideoSource::setFPS(int fps)
+{
+  if (fps > 0) 
+  {
+    FPS = fps;
+  } 
+  else 
+  {
+    #ifdef FRAMES_PER_SECOND
+      FPS = FRAMES_PER_SECOND;
+    #else
+      FPS = 15;
+    #endif  
+  }
 }
 
 bool SDCardVideoSource::getVideoFrame(uint8_t **buffer, size_t &bufferLength, size_t &frameLength)
@@ -42,12 +64,12 @@ bool SDCardVideoSource::getVideoFrame(uint8_t **buffer, size_t &bufferLength, si
   // work out the video time from a combination of the currentAudioSample and the elapsed time
   int elapsedTime = millis() - mLastAudioTimeUpdateMs;
   int videoTime = mAudioTimeMs + elapsedTime;
-  int frameTime = 1000 * mFrameCount / DEFAULT_FPS;
+  int frameTime = 1000 * mFrameCount / FPS;
   if (videoTime <= frameTime)
   {
     return false;
   }
-  while (videoTime > 1000 * mFrameCount / DEFAULT_FPS)
+  while (videoTime > 1000 * mFrameCount / FPS)
   {
     mFrameCount++;
     frameLength = parser->getNextChunk((uint8_t **)buffer, bufferLength);

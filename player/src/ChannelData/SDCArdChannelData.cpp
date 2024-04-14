@@ -25,6 +25,11 @@ bool SDCardChannelData::fetchChannelData() {
   return true;
 }
 
+// int fileFPS = 0;
+// int SDCardChannelData::getFileFPS() {
+//   return fileFPS;
+// }
+
 
 void SDCardChannelData::setChannel(int channel) {
   Serial.printf("SDCardChannelData::setChannel to %d\n", channel);
@@ -49,6 +54,26 @@ void SDCardChannelData::setChannel(int channel) {
   }
   // open the AVI file
   std::string aviFilename = mAviFiles[channel];
+
+  // check if the filename contains "_15fps"
+  if (aviFilename.find("_15fps") != std::string::npos) {
+    // do something
+    fileFPS = 15;
+  }
+  else if (aviFilename.find("_24fps") != std::string::npos) {
+    // do something
+    fileFPS = 24;
+  }
+  else if (aviFilename.find("_30fps") != std::string::npos) {
+    // do something
+    fileFPS = 30;
+  }
+  else {
+    // do something
+    fileFPS = 0;
+  }
+  Serial.printf("File FPS: %d\n", fileFPS);
+
   Serial.printf("Opening AVI file %s\n", aviFilename.c_str());
   mCurrentChannelAudioParser = new AVIParser(aviFilename, AVIChunkType::AUDIO);
   if (!mCurrentChannelAudioParser->open()) {

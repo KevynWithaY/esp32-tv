@@ -30,12 +30,12 @@ enum class RemoteCommands
 class RemoteInput
 {
   private:
-    gpio_num_t m_input_pin;
-    gpio_num_t m_pwr_pin;
-    gpio_num_t m_gnd_pin;
-    gpio_num_t m_led_pin;
+    int m_input_pin;
+    int m_pwr_pin;
+    int m_gnd_pin;
+    int m_led_pin;
   public:
-    RemoteInput(gpio_num_t input_pin, gpio_num_t pwr_pin = GPIO_NUM_NC, gpio_num_t gnd_pin = GPIO_NUM_NC, gpio_num_t led_pin = GPIO_NUM_NC);
+    RemoteInput(int input_pin, int pwr_pin = -1, int gnd_pin = -1, int led_pin = -1);
     void start();
     void stop();
     RemoteCommands getLatestCommand();

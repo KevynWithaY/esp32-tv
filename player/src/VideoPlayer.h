@@ -17,6 +17,11 @@ class ChannelData;
 class VideoPlayer {
   private:
     int mChannelVisible = 0;
+    int showPrePlayStatic = 0;
+    unsigned long prePlayStaticTime=0;
+    int showVolumeText = 0;
+    unsigned long volumeTextTime=0;
+
     VideoPlayerState mState = VideoPlayerState::STOPPED;
 
     // video playing
@@ -50,5 +55,6 @@ class VideoPlayer {
     void stop();
     void pause();
     void playStatic();
+    void volumeUpdated();
     VideoPlayerState getState();
 };

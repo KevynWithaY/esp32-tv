@@ -31,10 +31,15 @@ public:
     }
     mVolume++;
   }
+
   void volumeDown() {
     if (mVolume == 0) {
       return;
     }
     mVolume--;
   }
+
+  int getVolume() {
+    return mVolume;
+  } 
 };

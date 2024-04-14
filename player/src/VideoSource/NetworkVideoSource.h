@@ -21,4 +21,7 @@ class NetworkVideoSource: public VideoSource {
     // see superclass for documentation
     bool getVideoFrame(uint8_t **buffer, size_t &bufferLength, size_t &frameLength);
     void setChannel(int channel);
+    void setFPS(int fps) {
+      // not implemented
+    }
 };

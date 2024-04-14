@@ -1,0 +1,42 @@
+Copilot suggestion for downloading new video files from an FTP server to store on the SD card:
+
+#include <WiFi.h>
+#include <SPI.h>
+#include <SD.h>
+#include <ESP32_FTPClient.h>
+
+
+const char* ssid = "your_wifi_ssid";
+const char* password = "your_wifi_password";
+
+
+const char* ftpServer = "your_ftp_server";
+const char* ftpUser = "your_ftp_user";
+const char* ftpPassword = "your_ftp_password";
+
+
+void loop() {
+    if (WiFi.status() == WL_CONNECTED) {
+        FTPClient ftp;
+        if (ftp.connect(ftpServer, ftpUser, ftpPassword)) {
+            // List files on the server
+            ftp.list("/");
+            while (ftp.available()) {
+                String filename = ftp.getFilename();
+                // Check if it's a new video file
+                if (filename.endsWith(".mp4")) {
+                    // Download the file
+                    if (ftp.download(filename, "/sdcard/" + filename)) {
+                        Serial.println("Downloaded: " + filename);
+                    } else {
+                        Serial.println("Download failed: " + filename);
+                    }
+                }
+            }
+            ftp.disconnect();
+        } else {
+            Serial.println("FTP connection failed!");
+        }
+    }
+    delay(60000); // Wait for 1 minute before checking again
+}

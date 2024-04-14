@@ -83,6 +83,12 @@ void TFT::drawTuningText() {
   tft->println("TUNING...");
 }
 
+void TFT::drawVolumeText(int volume) {
+  tft->setCursor(20, 20);
+  tft->setTextColor(TFT_GREEN, TFT_BLACK);
+  tft->printf("VOL %d\n", volume);
+}
+
 void TFT::drawFPS(int fps) {
     // show the frame rate in the top right
     tft->setCursor(width() - 50, 20);

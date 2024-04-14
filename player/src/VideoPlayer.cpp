@@ -43,8 +43,6 @@ void VideoPlayer::start()
   mVideoSource->start();
   mAudioSource->start();
 
-
-
   // launch the frame player task
   xTaskCreatePinnedToCore(_framePlayerTask, "Frame Player", 10000, this, 1, NULL, FRAME_CORE);
 
@@ -55,11 +53,18 @@ void VideoPlayer::start()
 void VideoPlayer::setChannel(int channel)
 {
   mChannelData->setChannel(channel);
+  mVideoSource->setFPS(mChannelData->getFileFPS());
   // set the audio sample to 0 - TODO - move this somewhere else?
   mCurrentAudioSample = 0;
   mChannelVisible = millis();
   // update the video source
   mVideoSource->setChannel(channel);
+}
+
+void VideoPlayer::volumeUpdated()
+{
+  showVolumeText = true;
+  volumeTextTime = millis();
 }
 
 void VideoPlayer::play()
@@ -71,6 +76,8 @@ void VideoPlayer::play()
   mState = VideoPlayerState::PLAYING;
   mVideoSource->setState(VideoPlayerState::PLAYING);
   mCurrentAudioSample = 0;
+  showPrePlayStatic=true;
+  prePlayStaticTime=millis();
 }
 
 void VideoPlayer::stop()
@@ -106,6 +113,8 @@ void VideoPlayer::playStatic()
 }
 
 
+
+
 // double buffer the dma drawing otherwise we get corruption
 uint16_t *dmaBuffer[2] = {NULL, NULL};
 int dmaBufferIndex = 0;
@@ -139,17 +148,22 @@ void VideoPlayer::framePlayerTask()
   uint8_t *jpegBuffer = NULL;
   size_t jpegBufferLength = 0;
   size_t jpegLength = 0;
+
   // used for calculating frame rate
   std::list<int> frameTimes;
+
   while (true)
   {
+    // Paused or Stopped:
     if (mState == VideoPlayerState::STOPPED || mState == VideoPlayerState::PAUSED)
     {
       // nothing to do - just wait
       vTaskDelay(100 / portTICK_PERIOD_MS);
       continue;
     }
-    if (mState == VideoPlayerState::STATIC)
+
+    // Static:
+    if (mState == VideoPlayerState::STATIC || (showPrePlayStatic)) 
     {
       // draw random pixels to the screen to simulate static
       // we'll do this 8 rows of pixels at a time to save RAM
@@ -169,10 +183,24 @@ void VideoPlayer::framePlayerTask()
         }
         mDisplay.drawPixels(0, i * height, width, height, staticBuffer);
       }
-      mDisplay.endWrite();
+    
+
+      if (showPrePlayStatic) {
+        if (millis() - prePlayStaticTime > 1000) {
+          showPrePlayStatic=false;
+          mChannelVisible = millis();
+        } else {
+          mDisplay.drawTuningText();
+        }
+
+        mDisplay.endWrite();
+      }      
+      
       vTaskDelay(50 / portTICK_PERIOD_MS);
       continue;
     }
+
+    // Playing:
     // get the next frame
     if (!mVideoSource->getVideoFrame(&jpegBuffer, jpegBufferLength, jpegLength))
     {
@@ -197,10 +225,21 @@ void VideoPlayer::framePlayerTask()
       mJpeg.decode(0, 0, 0);
       mJpeg.close();
     }
+
     // show channel indicator 
     if (millis() - mChannelVisible < 2000) {
       mDisplay.drawChannel(mChannelData->getChannelNumber());
     }
+
+    // show volume indicator
+    if (showVolumeText) {
+      if (millis() - volumeTextTime < 2000) {
+        mDisplay.drawVolumeText(mAudioOutput->getVolume());
+      } else {
+        showVolumeText = false;
+      }
+    }
+
     //#if CORE_DEBUG_LEVEL > 0
     #ifdef SHOW_FPS
     mDisplay.drawFPS(frameTimes.size() / 5);

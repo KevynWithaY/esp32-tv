@@ -16,9 +16,13 @@ private:
   AVIParser *mCurrentChannelVideoParser = NULL;
   SDCard *mSDCard;
   const char *mAviPath;
+  int fileFPS = 0;
 public:
   SDCardChannelData(SDCard *sdCard, const char *aviPath);
   bool fetchChannelData();
+  int getFileFPS() {
+    return fileFPS;
+  }
   int getChannelCount() {
     return mAviFiles.size();
   };
