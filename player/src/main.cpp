@@ -49,15 +49,71 @@ Matrix display;
 TFT display;
 #endif
 
+// MPR121 touch sensor for touch buttons
+#ifdef HAS_MPR121
+#include <Wire.h>
+#include "Adafruit_MPR121.h"
+
+#ifndef _BV
+#define _BV(bit) (1 << (bit)) 
+#endif
+
+// You can have up to 4 on one i2c bus but one is enough for testing!
+Adafruit_MPR121 cap = Adafruit_MPR121();
+
+// Keeps track of the last pins touched
+// so we know when buttons are 'released'
+uint16_t lasttouched = 0;
+uint16_t currtouched = 0;
+bool touchChanged = false;
+
+#ifdef MPR121_INTERRUPT_PIN
+
+void IRAM_ATTR mpr121_isr() {
+	//Serial.println("mpr121 interrupt");
+  touchChanged = true;
+}
+#endif
+
+void mpr121Init() {
+  Serial.println("Adafruit MPR121 Capacitive Touch sensor test"); 
+  
+  // Default address is 0x5A, if tied to 3.3V its 0x5B
+  // If tied to SDA its 0x5C and if SCL then 0x5D
+  if (!cap.begin(0x5A)) {
+    Serial.println("MPR121 not found, check wiring?");
+    while (1);
+  }
+  Serial.println("MPR121 found!");
+
+  #ifdef MPR121_INTERRUPT_PIN
+  pinMode(MPR121_INTERRUPT_PIN, INPUT_PULLUP);
+	attachInterrupt(MPR121_INTERRUPT_PIN, mpr121_isr, FALLING);
+  #else
+  touchChanged = true; // always check touch status
+  #endif
+}
+
+#endif
+// -- End of MPR121 touch sensor
+
 void setup()
 {
   Serial.begin(115200);
+
   Serial.printf("Total heap: %d\n", ESP.getHeapSize());
   Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
   Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
   Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
+
   powerInit();
+
+  #ifdef HAS_MPR121
+  mpr121Init();
+  #endif
+ 
   buttonInit();
+ 
 
   #ifdef USE_SDCARD
   Serial.println("Using SD Card");
@@ -72,53 +128,9 @@ void setup()
 
   #ifdef USE_SDIO
 
-    // 1-bit mode uses CLK, CMD, D0 while 4-bit mode uses CLK, CMD, D0, D1, D2, D3
+  // 1-bit mode uses CLK, CMD (MOSI), D0 (MISO) 
+  SDCard *card = new SDCard(SD_CARD_CLK, SD_CARD_CMD, SD_CARD_D0);
 
-    // Didn't need to pull this up in Arduino SD_MMC example, but ESP-IDF says:
-    // CLK is GPIO 14, 10k pullup in SD mode
-    // On DevKitC v4, this pin has a weak pull up, but it's not enabled by default.
-    //pinMode(SD_CARD_CLK, INPUT_PULLUP); // Pin 14, CLK is CLK in SPI mode
-
-    // CMD (MOSI in SPI mode) is GPIO 15, 10k pullup in SD mode
-    // On DevKitC v4, this pin has a weak pull up, but it's not enabled by default.
-    //pinMode(SD_CARD_CMD, INPUT_PULLUP); // Pin 15, CMD is MOSI in SPI mode
-
-    // D0 (MISO in SPI mode) is GPIO 2, 10k pullup in SD mode, pull low to go into download mode (see Note about GPIO2 below!)
-    // Internal pull-up available on DevKitC v4
-    //pinMode(SD_CARD_D0, INPUT_PULLUP); // Pin 2, D0 is MISO in SPI mode
-
-    // D3 (CS in SPI mode) is GPIO 13, 10k pullup in SD mode
-    // Internal pull-up available on DevKitC v4
-    //pinMode(SD_CARD_D3, INPUT_PULLUP); // Pin 13, D3 is CS in SPI mode
-    
-  // #ifdef USE_4BIT_MODE
-  //   // D1 is GPIO 4, 10k pullup in SD mode
-  //   // Internal pull-up available on DevKitC v4
-  //   pinMode(SD_CARD_D1, INPUT_PULLUP); // Pin 4
-
-  //   // D2 is GPIO 12, 10k pullup in SD mode
-  //   // Internal pull-up available on DevKitC v4
-  //   // Note: GPIO12 is used as a bootstrapping pin, so it must be low at reset, so must disconnect pull-up resistor to flash it.
-  //   pinMode(SD_CARD_D2, INPUT_PULLUP); // Pin 12
-
-  //   // D3 (CS in SPI mode) is GPIO 13, 10k pullup in SD mode
-  //   // Internal pull-up available on DevKitC v4
-  //   pinMode(SD_CARD_D3, INPUT_PULLUP); // Pin 13
-  // #endif
-
-    // Regarding GPIO 12:
-    // https://github.com/espressif/esp-idf/tree/master/examples/storage/sd_card/sdmmc
-    // On boards which use the internal regulator and a 3.3V flash chip, GPIO12 must be low at reset. This is incompatible with SD card operation.
-    // In most cases, external pullup can be omitted and an internal pullup can be enabled using a gpio_pullup_en(GPIO_NUM_12); call. Most SD cards work fine when an internal pullup on GPIO12 line is enabled. Note that if ESP32 experiences a power-on reset while the SD card is sending data, high level on GPIO12 can be latched into the bootstrapping register, and ESP32 will enter a boot loop until external reset with correct GPIO12 level is applied.
-    // Another option is to burn the flash voltage selection efuses. This will permanently select 3.3V output voltage for the internal regulator, and GPIO12 will not be used as a bootstrapping pin. Then it is safe to connect a pullup resistor to GPIO12. This option is suggested for production use.
-
-  SDCard *card = new SDCard(SD_CARD_CLK, SD_CARD_CMD, SD_CARD_D0); //, SD_CARD_D1, SD_CARD_D2, SD_CARD_D3);
-  // #else
-  // pinMode(SD_CARD_CS, INPUT_PULLUP);
-  // pinMode(SD_CARD_MISO, INPUT_PULLUP);
-  // pinMode(SD_CARD_MOSI, INPUT_PULLUP);
-  // pinMode(SD_CARD_CLK, INPUT_PULLUP);
-  // SDCard *card = new SDCard(SD_CARD_MISO, SD_CARD_MOSI, SD_CARD_CLK, SD_CARD_CS);
   #endif
 
   channelData = new SDCardChannelData(card, "/");
@@ -240,9 +252,12 @@ void channelDown() {
     newChannel = channelData->getChannelCount() - 1;
   }
   videoPlayer->stop();
+  display.fillScreen(0x0000);
+  delay(100);
   display.drawTuningText();
   channel = newChannel;
   videoPlayer->setChannel(channel);
+  delay(200);
   videoPlayer->play();
   Serial.printf("CHANNEL_DOWN %d\n", channel);
 }
@@ -251,12 +266,17 @@ void channelUp() {
   // This works
   int newChannel = (channel + 1) % channelData->getChannelCount();
   videoPlayer->stop();
+  display.fillScreen(0x0000);
+  delay(100);
   display.drawTuningText();
   channel = newChannel;
   videoPlayer->setChannel(channel);
+  delay(200);
   videoPlayer->play();
   Serial.printf("CHANNEL_UP %d\n", channel);
 }
+
+bool doDelay = true;
 
 void loop()
 {
@@ -302,8 +322,57 @@ void loop()
   }
 #endif
 
+// Handle MPR121 touch buttons:
+#ifdef HAS_MPR121
+  doDelay = false;
+
+  if (touchChanged) {
+
+  // Get the currently touched pads
+  currtouched = cap.touched();
+  
+  for (uint8_t i=0; i<12; i++) {
+    // it if *is* touched and *wasnt* touched before, alert!
+    if ((currtouched & _BV(i)) && !(lasttouched & _BV(i)) ) {
+      Serial.print(i); Serial.println(" touched");
+      switch(i) {
+        case MPR121_CHANNEL_UP_KEY:
+          Serial.println("CHANNEL UP");
+          channelUp();
+          break;
+        case MPR121_CHANNEL_DOWN_KEY:
+          Serial.println("CHANNEL DOWN");
+          channelDown();
+          break;
+        case MPR121_VOL_UP_KEY:
+          Serial.println("VOL UP");
+          volumeUp();
+          break;
+        case MPR121_VOL_DOWN_KEY:
+          Serial.println("VOL DOWN");
+          volumeDown();
+          break;        
+      }
+    }
+    // // if it *was* touched and now *isnt*, alert!
+    // if (!(currtouched & _BV(i)) && (lasttouched & _BV(i)) ) {
+    //   Serial.print(i); Serial.println(" released");
+    // }
+  }
+
+  // reset our state
+  lasttouched = currtouched;
+
+  #ifdef MPR121_INTERRUPT_PIN
+  touchChanged = false;
+  #endif
+
+  }
+#endif
+
 // Handle button presses:
 #ifdef HAS_BUTTONS
+  doDelay = false;
 
   if (buttonLeft()) {
     Serial.println("LEFT");
@@ -334,9 +403,13 @@ void loop()
   buttonLoop();
   delay(200); // todo: is this needed?
 
-#else
-    // important this needs to stay otherwise we are constantly polling the IR Remote
-    // and there's no time for anything else to run.
-    delay(200);
 #endif
+
+if (doDelay)
+{
+  // important this needs to stay otherwise we are constantly polling the IR Remote
+  // and there's no time for anything else to run.
+  delay(200);
+}
+
 }

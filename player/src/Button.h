@@ -58,11 +58,13 @@ bool buttonPowerOff() {
   // Press channel up/down buttons at same time to power off
 #ifdef BUTTON_L
   #ifdef BUTTON_R
-    return false; //return (_btn_left == 0 && _btn_right == 0);
+    return (_btn_left == 0 && _btn_right == 0);
   #endif
 #endif
   return false;
 }
+
+
 
 void buttonInit(){
 
@@ -70,10 +72,8 @@ void buttonInit(){
   #ifdef BUTTON_R
   _btn_left = 1;
   _btn_right = 1;
-  //pinMode(BUTTON_L, INPUT_PULLUP);
-  //pinMode(BUTTON_R, INPUT_PULLUP);
-  //pinMode(BUTTON_L, INPUT); // touch
-  //pinMode(BUTTON_R, INPUT); // touch
+  pinMode(BUTTON_L, INPUT_PULLUP);
+  pinMode(BUTTON_R, INPUT_PULLUP);
   #endif
 #endif
 
@@ -104,14 +104,8 @@ void buttonLoop(){
 
     #ifdef BUTTON_L
       #ifdef BUTTON_R
-      //_btn_right = digitalRead(BUTTON_R);
-      //_btn_left = digitalRead(BUTTON_L);
-      //Serial.println("button left: " + touchRead(BUTTON_L));
-      //Serial.println("button right: " + touchRead(BUTTON_R));
-      if (touchRead(BUTTON_L) < 50) _btn_left = 0;
-      else _btn_left = 1;
-      if (touchRead(BUTTON_R) < 50) _btn_right = 0;
-      else _btn_right = 1;  
+      _btn_right = digitalRead(BUTTON_R);
+      _btn_left = digitalRead(BUTTON_L);
       #endif
     #endif
 
