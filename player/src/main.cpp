@@ -19,6 +19,7 @@
 #include "PowerUtils.h"
 #include "Button.h"
 #include "driver/sdmmc_types.h"
+#include <Wire.h>
 
 const char *WIFI_SSID = "CMGResearch";
 const char *WIFI_PASSWORD = "02087552867";
@@ -51,7 +52,7 @@ TFT display;
 
 // MPR121 touch sensor for touch buttons
 #ifdef HAS_MPR121
-#include <Wire.h>
+
 #include "Adafruit_MPR121.h"
 
 #ifndef _BV
@@ -68,7 +69,6 @@ uint16_t currtouched = 0;
 bool touchChanged = false;
 
 #ifdef MPR121_INTERRUPT_PIN
-
 void IRAM_ATTR mpr121_isr() {
 	//Serial.println("mpr121 interrupt");
   touchChanged = true;
@@ -76,7 +76,7 @@ void IRAM_ATTR mpr121_isr() {
 #endif
 
 void mpr121Init() {
-  Serial.println("Adafruit MPR121 Capacitive Touch sensor test"); 
+  Serial.println("Adafruit MPR121 Capacitive Touch sensor"); 
   
   // Default address is 0x5A, if tied to 3.3V its 0x5B
   // If tied to SDA its 0x5C and if SCL then 0x5D
@@ -97,6 +97,27 @@ void mpr121Init() {
 #endif
 // -- End of MPR121 touch sensor
 
+// -- SSD1306 OLED display --
+#ifdef HAS_SSD1306
+
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+#endif
+// -- End of SSD1306 OLED display --
+
+int channel = 0;
+int volume = 0;
+bool channelChanged = false;
+bool volumeChanged = false;
+bool useOled = false;
+
 void setup()
 {
   Serial.begin(115200);
@@ -107,13 +128,7 @@ void setup()
   Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
 
   powerInit();
-
-  #ifdef HAS_MPR121
-  mpr121Init();
-  #endif
- 
-  buttonInit();
- 
+  buttonInit(); 
 
   #ifdef USE_SDCARD
   Serial.println("Using SD Card");
@@ -193,6 +208,10 @@ void setup()
   
 #endif
 
+  #ifdef HAS_MPR121
+  mpr121Init();
+  #endif
+
   // Start video player
   videoPlayer = new VideoPlayer(
     channelData,
@@ -203,7 +222,32 @@ void setup()
   );
   videoPlayer->start();
 
-#ifndef HAS_IR_REMOTE
+#ifdef HAS_SSD1306
+  // initialize and clear display
+  if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+  } else {
+    // Clear the display buffer.
+    oled.clearDisplay();
+    // Set the text size.
+    oled.setTextSize(2);
+    // Set the text color.
+    oled.setTextColor(SSD1306_WHITE);
+    // Set the cursor position.
+    oled.setCursor(0, 0);
+    // Print the text.
+    oled.println("Tuning...");
+    oled.display();
+    useOled = true;
+    channelChanged = true;
+
+    //pinMode(35, INPUT);
+  }
+#endif
+
+// ----------- Start Playback -------------
+
+//#ifndef HAS_IR_REMOTE
 
   // If no IR remote, just start playing channel 0
   // otherwise wait for power button on remote...
@@ -219,30 +263,33 @@ void setup()
   // default to first channel
   videoPlayer->setChannel(0);
   videoPlayer->play();
+  volume = audioOutput->getVolume();
 
-#endif
+//#endif
 
-  #ifdef M5CORE2
-  audioOutput->setVolume(4);
-  #endif
+  // #ifdef M5CORE2
+  // audioOutput->setVolume(4);
+  // #endif
 }
 
-int channel = 0;
+
 
 void volumeUp() {
   audioOutput->volumeUp();
-  int volume = audioOutput->getVolume();
+  volume = audioOutput->getVolume();
   videoPlayer->volumeUpdated();
   delay(100);
   Serial.println("VOLUME_UP");
+  volumeChanged = true;
 }
 
 void volumeDown() {
   audioOutput->volumeDown();
-  int volume = audioOutput->getVolume();
+  volume = audioOutput->getVolume();
   videoPlayer->volumeUpdated();
   delay(100);
   Serial.println("VOLUME_DOWN");
+  volumeChanged = true;
 }
 
 void channelDown() {
@@ -257,9 +304,11 @@ void channelDown() {
   display.drawTuningText();
   channel = newChannel;
   videoPlayer->setChannel(channel);
+  
   delay(200);
   videoPlayer->play();
   Serial.printf("CHANNEL_DOWN %d\n", channel);
+  channelChanged = true;
 }
 
 void channelUp() {
@@ -274,12 +323,41 @@ void channelUp() {
   delay(200);
   videoPlayer->play();
   Serial.printf("CHANNEL_UP %d\n", channel);
+  channelChanged = true;
 }
 
 bool doDelay = true;
 
+int timeStart = 0;
+
 void loop()
 {
+  if (timeStart = 0) {
+    timeStart = millis();
+  }
+#ifdef HAS_SSD1306
+  // if (millis() - timeStart > 1000) {
+  //   oled.clearDisplay();
+  //   oled.setCursor(0,0);
+  //   oled.println(analogRead(35));
+  //   timeStart = millis();
+  // }
+  if (useOled && (channelChanged || volumeChanged)) {
+    // Clear the display buffer.
+    oled.clearDisplay();
+    // Set the text size.
+    oled.setTextSize(2);
+    // Set the text color.
+    oled.setTextColor(SSD1306_WHITE);
+    // Set the cursor position.
+    oled.setCursor(0, 0);
+    // Print the text.
+    oled.println("CHAN: " + String(channel) + " | VOL: " + String(volume));
+    // Display the content of the display buffer.
+    oled.display();
+  }
+#endif
+
 #ifdef HAS_IR_REMOTE
   RemoteCommands command = remoteInput->getLatestCommand();
   if (command != RemoteCommands::UNKNOWN)
@@ -331,8 +409,8 @@ void loop()
   // Get the currently touched pads
   currtouched = cap.touched();
   
-  for (uint8_t i=0; i<12; i++) {
-    // it if *is* touched and *wasnt* touched before, alert!
+  for (uint8_t i=0; i<4; i++) {
+    // if it *is* touched and *wasnt* touched before, alert!
     if ((currtouched & _BV(i)) && !(lasttouched & _BV(i)) ) {
       Serial.print(i); Serial.println(" touched");
       switch(i) {
@@ -405,7 +483,8 @@ void loop()
 
 #endif
 
-if (doDelay)
+//if (doDelay)
+if (true)
 {
   // important this needs to stay otherwise we are constantly polling the IR Remote
   // and there's no time for anything else to run.

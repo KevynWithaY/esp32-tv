@@ -50,6 +50,7 @@ class VideoPlayer {
   public:
     VideoPlayer(ChannelData *channelData, VideoSource *videoSource, AudioSource *audioSource, Display &display, AudioOutput *audioOutput);
     void setChannel(int channelIndex);
+    int getChannel();
     void start();
     void play();
     void stop();

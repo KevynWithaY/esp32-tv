@@ -50,6 +50,11 @@ void VideoPlayer::start()
   xTaskCreatePinnedToCore(_audioPlayerTask, "audio_loop", 10000, this, 1, NULL, AUDIO_CORE);
 }
 
+int VideoPlayer::getChannel()
+{
+  return mChannelData->getChannelNumber();
+} 
+
 void VideoPlayer::setChannel(int channel)
 {
   mChannelData->setChannel(channel);

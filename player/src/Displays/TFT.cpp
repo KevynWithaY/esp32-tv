@@ -14,11 +14,11 @@ TFT::TFT(): tft(new TFT_eSPI()) {
   #endif
 
   tft->init();
-  #ifdef M5CORE2
-  tft->setRotation(6);
-  #else
+  // #ifdef M5CORE2
+  // tft->setRotation(6);
+  // #else
   tft->setRotation(3);
-  #endif
+  //#endif
   tft->fillScreen(TFT_BLACK);
   #ifdef USE_DMA
   tft->initDMA();
