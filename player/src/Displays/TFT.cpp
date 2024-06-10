@@ -73,20 +73,26 @@ void TFT::fillScreen(uint16_t color) {
 
 void TFT::drawChannel(int channelIndex) {
   tft->setCursor(20, 20);
-  tft->setTextColor(TFT_GREEN, TFT_BLACK);
+  tft->setTextColor(TFT_GREEN, TFT_BLACK, true);
   tft->printf("%d", channelIndex);
 }
 
 void TFT::drawTuningText() {
   tft->setCursor(20, 20);
-  tft->setTextColor(TFT_GREEN, TFT_BLACK);
+  tft->setTextColor(TFT_GREEN, TFT_BLACK, true);
   tft->println("TUNING...");
 }
 
 void TFT::drawVolumeText(int volume) {
   tft->setCursor(20, 20);
-  tft->setTextColor(TFT_GREEN, TFT_BLACK);
+  tft->setTextColor(TFT_GREEN, TFT_BLACK, true);
   tft->printf("VOL %d\n", volume);
+}
+
+void TFT::drawErrorText(String text) {
+  tft->setCursor(20, 20);
+  tft->setTextColor(TFT_RED, TFT_BLACK, true);
+  tft->println(text.c_str());
 }
 
 void TFT::drawFPS(int fps) {
@@ -94,5 +100,14 @@ void TFT::drawFPS(int fps) {
     tft->setCursor(width() - 50, 20);
     tft->setTextColor(TFT_GREEN, TFT_BLACK);
     tft->printf("%d", fps);
+}
+
+void TFT::drawArbitraryText(String text, int x, int y, uint16_t forecolor, uint16_t backcolor = TFT_BLACK, bool fillBackground = false, bool clearScreen = false) {
+  if (clearScreen) {
+    tft->fillScreen(backcolor);
+  }
+  tft->setCursor(x, y);
+  tft->setTextColor(forecolor, backcolor, fillBackground);
+  tft->println(text.c_str());
 }
 #endif

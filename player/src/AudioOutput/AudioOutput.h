@@ -9,7 +9,7 @@
 class AudioOutput
 {
 protected:
-  int mVolume = 10;
+  int mVolume = 4;
 public:
   AudioOutput();
   virtual void start(uint32_t sample_rate) = 0;

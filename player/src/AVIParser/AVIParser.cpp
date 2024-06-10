@@ -60,8 +60,15 @@ bool AVIParser::isMoviListChunk(unsigned int chunkSize)
   return false;
 }
 
+static unsigned long str2ulong(unsigned char *str)
+{
+	return (str[0] | (str[1] << 8) | (str[2] << 16) | (str[3] << 24));
+}
+
 bool AVIParser::open()
 {
+  // TODO: Read "title" metadata from file by looking for "INFOINAM" then skip 4 bytes then read the title string. there will be two empty bytes after the title, but check spec maybe there's an end tag we need to look for
+
   Serial.printf("%s AVIParser open %s\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"), mFileName.c_str());
 
   mFile = fopen(mFileName.c_str(), "rb");
@@ -71,14 +78,16 @@ bool AVIParser::open()
     //Serial.printf("Failed to open file.\n");
     return false;
   }
+
   // check the file is valid
   ChunkHeader header;
+
   // Read RIFF header
   readChunk(mFile, &header);
   if (strncmp(header.chunkId, "RIFF", 4) != 0)
   {
     Serial.printf("%s AVIParser: Not a valid AVI file.\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
-    //Serial.println("Not a valid AVI file.");
+    Serial.println("Not a valid AVI file.");
     fclose(mFile);
     mFile = NULL;
     return false;
@@ -88,13 +97,14 @@ bool AVIParser::open()
     Serial.printf("%s AVIParser: RIFF header found.\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
     //Serial.printf("RIFF header found.\n");
   }
+
   // next four bytes are the RIFF type which should be 'AVI '
   char riffType[4];
   fread(&riffType, 4, 1, mFile);
   if (strncmp(riffType, "AVI ", 4) != 0)
   {
     Serial.printf("%s AVIParser: Not a valid AVI file.\n", (mRequiredChunkType == AVIChunkType::VIDEO ? "VIDEO" : "AUDIO"));
-    //Serial.println("Not a valid AVI file.");
+    Serial.println("Not a valid AVI file.");
     fclose(mFile);
     mFile = NULL;
     return false;
@@ -103,6 +113,7 @@ bool AVIParser::open()
   // {
   //   Serial.println("RIFF Type is AVI.");
   // }
+
 
   // now read each chunk and find the movi list
   while (!feof(mFile) && !ferror(mFile))
@@ -125,15 +136,17 @@ bool AVIParser::open()
       // skip the chunk data bytes
       fseek(mFile, header.chunkSize, SEEK_CUR);
     }
-  }
+  } 
+
   // did we find the list?
   if (mMoviListPosition == 0)
   {
-    //Serial.printf("Failed to find the movi list.\n");
+    Serial.printf("Failed to find the movi list.\n");
     fclose(mFile);
     mFile = NULL;
     return false;
   }
+
   // keep the file open for reading the frames
   return true;
 }

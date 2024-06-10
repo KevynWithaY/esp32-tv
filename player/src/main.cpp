@@ -21,8 +21,16 @@
 #include "driver/sdmmc_types.h"
 #include <Wire.h>
 
-const char *WIFI_SSID = "CMGResearch";
-const char *WIFI_PASSWORD = "02087552867";
+#include <ESPmDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+
+//#include "BluetoothA2DPSinkQueued.h"
+
+//BluetoothA2DPSinkQueued a2dp_sink;
+
+const char *WIFI_SSID = "Subspace";
+const char *WIFI_PASSWORD = "makeitsonumber1";
 const char *FRAME_URL = "http://192.168.1.229:8123:8123/frame";
 const char *AUDIO_URL = "http://192.168.1.229:8123/audio";
 const char *CHANNEL_INFO_URL = "http://192.168.1.229:8123/channel_info";
@@ -44,6 +52,7 @@ AudioSource *audioSource = NULL;
 VideoPlayer *videoPlayer = NULL;
 AudioOutput *audioOutput = NULL;
 ChannelData *channelData = NULL;
+
 #ifdef LED_MATRIX
 Matrix display;
 #else
@@ -67,6 +76,7 @@ Adafruit_MPR121 cap = Adafruit_MPR121();
 uint16_t lasttouched = 0;
 uint16_t currtouched = 0;
 bool touchChanged = false;
+bool useMPR121 = true;
 
 #ifdef MPR121_INTERRUPT_PIN
 void IRAM_ATTR mpr121_isr() {
@@ -82,7 +92,9 @@ void mpr121Init() {
   // If tied to SDA its 0x5C and if SCL then 0x5D
   if (!cap.begin(0x5A)) {
     Serial.println("MPR121 not found, check wiring?");
-    while (1);
+    //while (1);
+    useMPR121 = false;
+    display.drawErrorText("MPR121 not found");
   }
   Serial.println("MPR121 found!");
 
@@ -117,6 +129,7 @@ int volume = 0;
 bool channelChanged = false;
 bool volumeChanged = false;
 bool useOled = false;
+bool startInBluetoothMode = false;
 
 void setup()
 {
@@ -130,16 +143,47 @@ void setup()
   powerInit();
   buttonInit(); 
 
+
+
+  if (startInBluetoothMode) {
+// static i2s_config_t i2s_config = {
+//       .mode = (i2s_mode_t) (I2S_MODE_MASTER | I2S_MODE_TX),
+//       .sample_rate = 44100, // updated automatically by A2DP
+//       .bits_per_sample = (i2s_bits_per_sample_t)16, //32
+//       .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT, // I2S_CHANNEL_FMT_RIGHT_LEFT,
+//       .communication_format = (i2s_comm_format_t) (I2S_COMM_FORMAT_STAND_I2S),
+//       .intr_alloc_flags = 0, // default interrupt priority
+//       .dma_buf_count = 8,
+//       .dma_buf_len = 64,
+//       .use_apll = true,
+//       .tx_desc_auto_clear = true // avoiding noise in case of data unavailability
+//   };
+//   a2dp_sink.set_i2s_config(i2s_config);
+
+//   i2s_pin_config_t my_pin_config = {
+//         .mck_io_num = I2S_PIN_NO_CHANGE,
+//         .bck_io_num = I2S_SPEAKER_SERIAL_CLOCK,
+//         .ws_io_num = I2S_SPEAKER_LEFT_RIGHT_CLOCK,
+//         .data_out_num = I2S_SPEAKER_SERIAL_DATA,
+//         .data_in_num = I2S_PIN_NO_CHANGE
+//     };
+  
+//   a2dp_sink.set_pin_config(my_pin_config);
+//   a2dp_sink.start("MyMusic");
+  } else {
+
+  
+
   #ifdef USE_SDCARD
   Serial.println("Using SD Card");
 
-  // power on the SD card
-  #ifdef SD_CARD_PWR
-  if (SD_CARD_PWR != GPIO_NUM_NC) {
-    pinMode(SD_CARD_PWR, OUTPUT);
-    digitalWrite(SD_CARD_PWR, SD_CARD_PWR_ON);
-  }
-  #endif
+  // // power on the SD card
+  // #ifdef SD_CARD_PWR
+  // if (SD_CARD_PWR != GPIO_NUM_NC) {
+  //   pinMode(SD_CARD_PWR, OUTPUT);
+  //   digitalWrite(SD_CARD_PWR, SD_CARD_PWR_ON);
+  // }
+  // #endif
 
   #ifdef USE_SDIO
 
@@ -176,26 +220,38 @@ void setup()
   remoteInput->start();
 #endif
 
-#ifdef USE_DAC_AUDIO
-  audioOutput = new DACOutput(I2S_NUM_0);
-  audioOutput->start(16000);
-#endif
-#ifdef PDM_GPIO_NUM
-  // i2s speaker pins
-  i2s_pin_config_t i2s_speaker_pins = {
-      .bck_io_num = I2S_PIN_NO_CHANGE,
-      .ws_io_num = GPIO_NUM_0,
-      .data_out_num = PDM_GPIO_NUM,
-      .data_in_num = I2S_PIN_NO_CHANGE};
-  audioOutput = new PDMOutput(I2S_NUM_0, i2s_speaker_pins);
-  audioOutput->start(16000);
-#endif
+// #ifdef USE_DAC_AUDIO
+//   audioOutput = new DACOutput(I2S_NUM_0);
+//   audioOutput->start(16000);
+// #endif
+// #ifdef PDM_GPIO_NUM
+//   // i2s speaker pins
+//   i2s_pin_config_t i2s_speaker_pins = {
+//       .bck_io_num = I2S_PIN_NO_CHANGE,
+//       .ws_io_num = GPIO_NUM_0,
+//       .data_out_num = PDM_GPIO_NUM,
+//       .data_in_num = I2S_PIN_NO_CHANGE};
+//   audioOutput = new PDMOutput(I2S_NUM_0, i2s_speaker_pins);
+//   audioOutput->start(16000);
+// #endif
 
 #ifdef I2S_SPEAKER_SERIAL_CLOCK
-#ifdef SPK_MODE
-  pinMode(SPK_MODE, OUTPUT);
-  digitalWrite(SPK_MODE, HIGH);
+// #ifdef SPK_MODE
+//   pinMode(SPK_MODE, OUTPUT);
+//   digitalWrite(SPK_MODE, HIGH);
+// #endif
+
+// Enable the left-channel amplifier
+#ifdef I2S_SPEAKER_SD_LEFT
+pinMode(I2S_SPEAKER_SD_LEFT, OUTPUT);
+digitalWrite(I2S_SPEAKER_SD_LEFT, HIGH);
 #endif
+
+// Enable the right-channel amplifier
+#ifdef I2S_SPEAKER_SD_RIGHT
+pinMode(I2S_SPEAKER_SD_RIGHT, INPUT);
+#endif
+
   // i2s speaker pins
   i2s_pin_config_t i2s_speaker_pins = {
       .bck_io_num = I2S_SPEAKER_SERIAL_CLOCK,
@@ -270,7 +326,74 @@ void setup()
   // #ifdef M5CORE2
   // audioOutput->setVolume(4);
   // #endif
-}
+  }
+
+
+#ifdef USE_OTA
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(5000);
+    ESP.restart();
+  }
+
+  // Port defaults to 3232
+  // ArduinoOTA.setPort(3232);
+
+  // Hostname defaults to esp3232-[MAC]
+  ArduinoOTA.setHostname("esp32-tv");
+
+  // No authentication by default
+  // ArduinoOTA.setPassword("admin");
+
+  // Password can be set with it's md5 value as well
+  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
+  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
+
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH) {
+        type = "sketch";
+      } else {  // U_SPIFFS
+        type = "filesystem";
+      }
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) {
+        Serial.println("Auth Failed");
+      } else if (error == OTA_BEGIN_ERROR) {
+        Serial.println("Begin Failed");
+      } else if (error == OTA_CONNECT_ERROR) {
+        Serial.println("Connect Failed");
+      } else if (error == OTA_RECEIVE_ERROR) {
+        Serial.println("Receive Failed");
+      } else if (error == OTA_END_ERROR) {
+        Serial.println("End Failed");
+      }
+    });
+
+  ArduinoOTA.begin();
+
+  Serial.println("Ready");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+#endif
+
+} // ** End of Setup function **
 
 
 
@@ -332,6 +455,10 @@ int timeStart = 0;
 
 void loop()
 {
+#ifdef USE_OTA
+ArduinoOTA.handle();
+#endif
+
   if (timeStart = 0) {
     timeStart = millis();
   }
@@ -402,7 +529,8 @@ void loop()
 
 // Handle MPR121 touch buttons:
 #ifdef HAS_MPR121
-  doDelay = false;
+if (useMPR121) {
+  doDelay = true;
 
   if (touchChanged) {
 
@@ -444,7 +572,7 @@ void loop()
   #ifdef MPR121_INTERRUPT_PIN
   touchChanged = false;
   #endif
-
+  }
   }
 #endif
 

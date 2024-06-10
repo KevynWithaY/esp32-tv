@@ -19,7 +19,9 @@ public:
   void fillScreen(uint16_t color);
   void drawChannel(int channelIndex);
   void drawTuningText();
+  void drawErrorText(String text);
   void drawVolumeText(int volume);
   void drawFPS(int fps);
+  void drawArbitraryText(String text, int x, int y, uint16_t forecolor, uint16_t backcolor = TFT_BLACK, bool fillBackground = false, bool clearScreen = false);
 };
 #endif
