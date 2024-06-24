@@ -15,7 +15,7 @@ class Display {
   virtual void drawErrorText(String text) = 0;
   virtual void drawFPS(int fps) = 0;
   virtual void drawVolumeText(int volume) = 0;
-  virtual void drawArbitraryText(String text, int x, int y, uint16_t forecolor, uint16_t backcolor = TFT_BLACK, bool fillBackground = false, bool clearScreen = false) = 0;
+  virtual void drawArbitraryText(String text, int x, int y, uint16_t forecolor, uint16_t backcolor, bool fillBackground = false, bool clearScreen = false) = 0;
   static uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
   }
